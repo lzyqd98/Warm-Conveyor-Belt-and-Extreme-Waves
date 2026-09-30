@@ -1,5 +1,5 @@
 #%%
-###### This code is to match upper-level wave events to WCB trajectories ######
+###### A simple PV model for reconstructing each wave event on an isentropic level ######
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime as dt, timedelta as td
@@ -13,9 +13,13 @@ import glob
 from netCDF4 import Dataset
 import xarray as xr
 import multiprocessing 
+import argparse
+parser = argparse.ArgumentParser(description="year for calculation dpvdt")
+parser.add_argument("--year", type=int, required=True, help="year for calculation dpvdt")
+args = parser.parse_args()
+year = args.year
 
-import sys
-sys.path.append("/home/liu3315/Research/Extreme LWA/CMIP6/Code")
+# The below package can be found from (https://github.com/paologhinassi/RWPtools), used to calculate local wave activity #
 import lwa_pv_theta_cal
 import wave_packet_cal
 import lwa_pv_theta_addition
@@ -28,11 +32,6 @@ lwa_pv_theta_addition.ifft   = _npfft.ifft
 lwa_pv_theta_addition.zeros  = np.zeros
 lwa_pv_theta_addition.append = np.append
 
-import argparse
-parser = argparse.ArgumentParser(description="year for calculation dpvdt")
-parser.add_argument("--year", type=int, required=True, help="year for calculation dpvdt")
-args = parser.parse_args()
-year = args.year
 
 
 #%%
@@ -567,13 +566,13 @@ if __name__ == "__main__":
     
     slat0   = np.sin(lat* np.pi/180)
     clat0   = np.cos(lat* np.pi/180)
-    clat_2d = abs(clat0[:, np.newaxis] * np.ones((nlat,nlon)))                    ## 2-D cos(fi) array
+    clat_2d = abs(clat0[:, np.newaxis] * np.ones((nlat,nlon)))     ## 2-D cos(fi) array
     slat_2d = slat0[:, np.newaxis] * np.ones((nlat,nlon))    
     
-    dlamda =a * clat0[135] * dlon_rad  ### Use 45 degree dx to avoid numerical instability
+    dlamda =a * clat0[135] * dlon_rad                              ## IMPORTANT: use 45 degree dx for the entire domain (like a beta plane), avoid dealing with sphere problem
     dphi = a * dlat_rad   
     
-    dphi_2d = a * dlat_rad * clat_2d                                                     ## 2-D length differential element: a*cos(fi)*dlat
+    dphi_2d = a * dlat_rad * clat_2d                               ## 2-D length differential element: a*cos(fi)*dlat
     ds      = a**2 * clat_2d * dlat_rad * dlon_rad     
     
     inv_2dx = 1.0 / (2.0 * dlamda * np.ones((nlat,nlon)) )
@@ -591,9 +590,9 @@ if __name__ == "__main__":
     ###------ Read extreme events data ------###
     input_path = "/scratch/bell/liu3315/ERA5/LWA_theta/WE_theta/"+season_id+"/WE_"+hemisphere_id+"_"+isentrope_name+"_"+variable_id+"/" + str(year) +"/"
     
-    with open(input_path+"dpvdt_wcb_600_neg_Inv_3day_correct", "rb") as fp:
+    with open(input_path+"dpvdt_wcb", "rb") as fp:             ## This is the diabatic heating term DPV/Dt estimated from each lagrangian WCB crossing
         dpvdt_wcb_all = pickle.load(fp)
-    with open(input_path+"dpvdt_wcb_trans_600_neg_Inv_3day_correct", "rb") as fp:
+    with open(input_path+"dpvdt_wcb_trans", "rb") as fp:       ## This is the vertical PV transport term
         dpvdt_wcb_trans_all = pickle.load(fp)
 
         
@@ -641,18 +640,18 @@ if __name__ == "__main__":
     LWA_a_full_peak = np.array([res[10] for res in results])
     LWA_a_noWCB_peak = np.array([res[11] for res in results])
 
-    np.save(input_path+"PV_full_Inv_600_2day_v2.npy", PV_full)
-    np.save(input_path+"LWA_full_Inv_600_2day_v2.npy", LWA_full)
-    np.save(input_path+"LWA_a_full_Inv_600_2day_v2.npy", LWA_a_full)
-    np.save(input_path+"PV_noWCB_Inv_600_2day_v2.npy", PV_noWCB)
-    np.save(input_path+"LWA_noWCB_Inv_600_2day_v2.npy", LWA_noWCB)
-    np.save(input_path+"LWA_a_noWCB_Inv_600_2day_v2.npy", LWA_a_noWCB)
-    np.save(input_path+"LWA_change_noWCB_Inv_600_2day_v2.npy", LWA_change)
-    np.save(input_path+"LWA_a_change_noWCB_Inv_600_2day_v2.npy", LWA_a_change)
-    np.save(input_path+"LWA_full_peak_Inv_600_2day_v2.npy", LWA_full_peak)
-    np.save(input_path+"LWA_noWCB_peak_Inv_600_2day_v2.npy", LWA_noWCB_peak)
-    np.save(input_path+"LWA_a_full_peak_Inv_600_2day_v2.npy", LWA_a_full_peak)
-    np.save(input_path+"LWA_a_noWCB_peak_Inv_600_2day_v2.npy", LWA_a_noWCB_peak)
+    np.save(input_path+"PV_full.npy", PV_full)
+    np.save(input_path+"LWA_full", LWA_full)
+    np.save(input_path+"LWA_a_full.npy", LWA_a_full)
+    np.save(input_path+"PV_noWCB.npy", PV_noWCB)
+    np.save(input_path+"LWA_noWCB", LWA_noWCB)
+    np.save(input_path+"LWA_a_noWCB.npy", LWA_a_noWCB)
+    np.save(input_path+"LWA_change_noWCB.npy", LWA_change)
+    np.save(input_path+"LWA_a_change_noWCB.npy", LWA_a_change)
+    np.save(input_path+"LWA_full_peak.npy", LWA_full_peak)
+    np.save(input_path+"LWA_noWCB_peak.npy", LWA_noWCB_peak)
+    np.save(input_path+"LWA_a_full_peak.npy", LWA_a_full_peak)
+    np.save(input_path+"LWA_a_noWCB_peak.npy", LWA_a_noWCB_peak)
 
 
 # %%
